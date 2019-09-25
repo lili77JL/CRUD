@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="./bin/vue-2.6.10.js"></script>
+    <link rel="stylesheet" href="./bin/bootstrap.css">
+    <script src="./node_modules/axios/dist/axios.js"></script>
+</head>
+<body>
+
+<div id="app">
+    <span>
+        <span>Id：</span>
+        <input type="text" v-model="Id">
+    </span>
+    <span>
+        <span>Name：</span>
+        <input type="text" v-model="Name" @keyup.1="add">
+    </span>
+    <input type="button" value="添加" @click="add">
+    <span>
+        <span>搜索名称关键字：</span>
+        <input type="text" v-model="keywords" v-focus v-color="`blue`">
+    </span>
+    <table class="table  table-bordered table-hover table-striped">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>姓名</th>
+            <th>时间</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="item in search(keywords)" :key="item.id">
+            <td>{{item.id}}</td>
+            <td>{{item.name}}</td>
+            <td>{{item.time|dateFormat("yyyy-mm-dd")}}</td>
+            <td><a href="" @click.prevent="del(item.id)">删除</a></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<div id="app2">
+    <p>{{dt|dateFormat()}}</p>
+    <p v-fontsize="`100px`">{{1+1}}</p>
+</div>
+<script>
+    axios.defaults.baseURL = `http://www.liulongbin.top:3005`;
+    axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+    // 自定义一个全局过滤器
+    Vue.filter("dateFormat", function (pattern = "") {
+            var dt = new Date()
+            var y = dt.getFullYear()
+            var m = (dt.getMonth() + 1).toString().padStart(2, 0)
+            var d = dt.getDate()
+            var hh = dt.getHours()
+            var mm = dt.getMinutes()
+            var ss = dt.getSeconds()
+            if (pattern === "yyyy-mm-dd") {
+                return `${y}-${m}-${d}`
+            } else {
+                return `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+            }
+        }
+    )
+    Vue.directive(`focus`, {
+        bind: function (el) {//每当指令绑定到元素上的时候，会立即执行这个bind函数，只执行一次
+            //在每个函数中，第一个参数，永远是el，表示被绑定了指令的那个元素，这个el 参数，是一个原生的Js对象
+            //在元素刚绑定了指令的时候，还没有插入到dom中去，这时候，调用focus方法没有作用
+            //因为，一个元素，只有插入dom之后，才能获取焦点
+            el.focus()
+        },
+        inserted: function (el) {//inserted表示元素插入到dom中的时候，会执行inserted函数，只触发一次
+            el.focus()
+        },
+        updated: function () {//当软件更新的时候会执行updated，可能会触发多次
+
+        }
+    })
+    //自定义一个设置字体颜色的指令
+    Vue.directive(`color`, {
+        //样式通过指令绑定给了元素，不管这个元素有没有被插入到页面中去，这个元素肯定有了一个内联的样式
+        //将来元素肯定会显示到页面中，这时候浏览器的渲染引擎必然会解析样式，应用给这个元素
+        bind: function (el, binding) {
+            el.style.color = binding.value
+            //样式相关的操作，一般都可以在bind中执行
+        }
+    })
+    var vm = new Vue({
+        el: `#app`,
+        data: {
+            Id: null,
+            Name: null,
+            keywords: "",
+            list: []
+        },
+        created() {
+            this.getAllList();
+        },
+        methods: {
+            getAllList() {//获取所有的商品列表
+                axios.get(`/api/getprodlist`).then((result) => {
+                    if (result.status === 200
+                    ) {
+                        this.list = result.data.message
+                    } else {
+                        alert(`获取数据失败`)
+                    }
+                })
+            },
+            add() {//添加商品列表到服务器
+                axios.post(`/api/addproduct`, {
+                    name: this.Name
+                }).then((result) => {
+                    if (result.status === 200
+                    ) {
+                        this.getAllList()
+                        this.Name = null
+                    } else {
+                        alert(`添加失败`)
+                    }
+
+                })
+            },
+            del(id) {
+                axios.get(`/api/delproduct/` + id).then((result) => {
+                    if (result.status === 200) {
+                        this.getAllList()
+                    } else {
+                        alert(`删除失败`)
+                    }
+                })
+            },
+            search(keywords) {
+                var newList = []
+                this.list.forEach(item => {
+                    if (item.name.indexOf(this.keywords) != -1) {
+                        newList.push(item)
+                    }
+                })
+                return newList;
+            }
+            ,
+        },
+    })
+    var vm2 = new Vue({
+        el: `#app2`,
+        data: {
+            dt: new Date()
+        },
+        //私有过滤器
+        filters: {
+            dateFormat(pattern = "") {
+                var dt = new Date()
+                var y = dt.getFullYear()
+                var m = (dt.getMonth() + 1).toString().padStart(2, 0)
+                var d = dt.getDate()
+                var hh = dt.getHours()
+                var mm = dt.getMinutes()
+                var ss = dt.getSeconds()
+                if (pattern === "yyyy-mm-dd") {
+                    return `${y}-${m}-${d}`
+                } else {
+                    return `${y}-${m}-${d} ${hh}:${mm}:${ss}========`
+                }
+            }
+        },
+        directives: {//自定义私有指令
+            fontsize: {
+                bind(el, binding) {
+                    el.style.fontSize = binding.value
+                }
+            }
+        }
+    })
+</script>
+</body>
+</html>
